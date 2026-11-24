@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  const DEFAULTS = { frontCamera: true, maxPoses: 1, model: 'lite', useGpu: true, maxInferenceFps: 0, analysisLongSide: 640 };
+  const DEFAULTS = { frontCamera: true, mirror: 'auto', maxPoses: 1, model: 'lite', useGpu: true, maxInferenceFps: 0, analysisLongSide: 640 };
   let cfg = Object.assign({}, DEFAULTS);
 
   let stream = null;
@@ -63,8 +63,15 @@
 
   // ------------------------------------------------------------------ 카메라
 
+  /** 좌우 반전: auto = 전면만 거울, on = 항상, off = 안 함(빔프로젝터 등에서 방향이 반대일 때) */
+  function effectiveMirror() {
+    if (cfg.mirror === 'on') return true;
+    if (cfg.mirror === 'off') return false;
+    return front;
+  }
+
   function applyMirror() {
-    video.style.transform = front ? 'scaleX(-1)' : 'none';
+    video.style.transform = effectiveMirror() ? 'scaleX(-1)' : 'none';
   }
 
   function stopStream() {
@@ -259,7 +266,7 @@
       canvas.height = h;
     }
     ctx.drawImage(video, 0, 0, w, h);
-    const ts = now, mirror = front;
+    const ts = now, mirror = effectiveMirror();
     if (worker) {
       createImageBitmap(canvas).then(function (bmp) {
         if (!worker || !running) {
@@ -376,6 +383,7 @@
 
   api.updateConfig = async function (c) {
     cfg = Object.assign({}, cfg, c || {});
+    applyMirror();
     try {
       if (stream && requestedFront !== !!cfg.frontCamera) await openCamera(!!cfg.frontCamera);
       await initEngine();
